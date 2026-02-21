@@ -1,0 +1,30 @@
+# Folder Structure
+
+```text
+lib/
+  core/
+    auth/
+    providers/
+    routing/
+    services/
+    theme/
+  features/
+    ai_logs/
+    ask_scholar/
+    auth/
+    charity/
+    cms/
+    dashboard/
+    events/
+    logs/
+    reports/
+    scholars/
+    settings/
+    teaching/
+    users/
+  shared/
+    widgets/
+firebase/
+  functions/src/
+docs/
+```

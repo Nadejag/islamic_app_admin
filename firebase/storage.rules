@@ -1,0 +1,38 @@
+rules_version = '2';
+service firebase.storage {
+  match /b/{bucket}/o {
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    function isAdmin() {
+      return signedIn() &&
+        (request.auth.token.role == 'admin' || request.auth.token.role == 'super_admin');
+    }
+
+    function isAllowedType() {
+      return request.resource.contentType.matches('image/.*') ||
+        request.resource.contentType == 'application/pdf' ||
+        request.resource.contentType.matches('audio/.*');
+    }
+
+    match /scholar_docs/{allPaths=**} {
+      allow read: if isAdmin();
+      allow write: if signedIn() && isAllowedType();
+    }
+
+    match /charity_proofs/{allPaths=**} {
+      allow read: if isAdmin();
+      allow write: if signedIn() && isAllowedType();
+    }
+
+    match /quran_audio/{allPaths=**} {
+      allow read: if true;
+      allow write: if isAdmin() && isAllowedType();
+    }
+
+    match /{allPaths=**} {
+      allow read, write: if false;
+    }
+  }
+}
