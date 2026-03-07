@@ -1,0 +1,75 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    function adminDoc() {
+      return get(/databases/$(database)/documents/admins/$(request.auth.uid));
+    }
+
+    function role() {
+      return signedIn() ? adminDoc().data.role : null;
+    }
+
+    function isAdmin() {
+      return signedIn() && (role() == 'admin' || role() == 'super_admin');
+    }
+
+    function isSuperAdmin() {
+      return signedIn() && role() == 'super_admin';
+    }
+
+    function withAuditFields() {
+      return request.resource.data.keys().hasAll(['status', 'createdAt', 'updatedAt']);
+    }
+
+    match /admins/{uid} {
+      allow read: if signedIn() && request.auth.uid == uid;
+      allow write: if isSuperAdmin();
+    }
+
+    match /users/{uid} {
+      allow read: if isAdmin() || (signedIn() && request.auth.uid == uid);
+      allow update: if isAdmin() || (signedIn() && request.auth.uid == uid);
+      allow create, delete: if isAdmin();
+    }
+
+    match /scholar_requests/{id} {
+      allow read: if isAdmin();
+      allow create: if signedIn() && withAuditFields();
+      allow update: if isAdmin();
+      allow delete: if isSuperAdmin();
+    }
+
+    match /charity_requests/{id} {
+      allow read: if true;
+      allow create: if signedIn() && withAuditFields();
+      allow update, delete: if isAdmin();
+    }
+
+    match /donations/{id} {
+      allow read: if isAdmin() || (signedIn() && resource.data.userId == request.auth.uid);
+      allow create: if signedIn() && withAuditFields();
+      allow update: if isAdmin();
+      allow delete: if false;
+    }
+
+    match /admin_logs/{id} {
+      allow read: if isAdmin();
+      allow create: if isAdmin();
+      allow update, delete: if false;
+    }
+
+    match /settings/{id} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    match /{collection}/{docId} {
+      allow read: if isAdmin();
+      allow write: if isAdmin();
+    }
+  }
+}
