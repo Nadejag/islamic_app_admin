@@ -1,0 +1,46 @@
+{
+  "project_info": {
+    "project_number": "439965580981",
+    "project_id": "ask-islam-admin",
+    "storage_bucket": "ask-islam-admin.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:439965580981:android:540ebbc51151e1702148fc",
+        "android_client_info": {
+          "package_name": "com.example.ask_islam_admin"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "439965580981-892eekjgs12499o25fe82ob9dtdjp0rl.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDGarSV1S6w9ObiueOmLjKSH_eNGlqWrlU"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "439965580981-892eekjgs12499o25fe82ob9dtdjp0rl.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "439965580981-ecnia1e2cc4mpltvleufoimiq8173gcn.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.example.askIslamAdmin"
+              }
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
