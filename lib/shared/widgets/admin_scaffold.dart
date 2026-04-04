@@ -139,6 +139,7 @@ class AdminScaffold extends ConsumerWidget {
           AppRoutes.scholars),
       _NavItem('Charity', Icons.volunteer_activism_outlined, AppRoutes.charity),
       _NavItem('Content Control', Icons.menu_book_outlined, AppRoutes.cms),
+      _NavItem('Home Screen', Icons.home_outlined, AppRoutes.homeControl),
       _NavItem('Events', Icons.event_outlined, AppRoutes.events),
       _NavItem(
           'Teaching', Icons.cast_for_education_outlined, AppRoutes.teaching),

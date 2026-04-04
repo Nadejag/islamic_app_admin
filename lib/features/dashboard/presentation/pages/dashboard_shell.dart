@@ -27,8 +27,9 @@ class DashboardScreen extends StatelessWidget {
                         context.read<DashboardCubit>().backToUsers(),
                     onBackToDashboard: () =>
                         context.read<DashboardCubit>().openOverview(),
-                    onOpenVerificationRequests: () =>
-                        context.read<DashboardCubit>().openVerificationRequests(),
+                    onOpenVerificationRequests: () => context
+                        .read<DashboardCubit>()
+                        .openVerificationRequests(),
                     onOpenCharityApprovals: () =>
                         context.read<DashboardCubit>().openCharityApprovals(),
                     onOpenAbuseReports: () =>
@@ -53,8 +54,9 @@ class DashboardScreen extends StatelessWidget {
                         context.read<DashboardCubit>().backToUsers(),
                     onBackToDashboard: () =>
                         context.read<DashboardCubit>().openOverview(),
-                    onOpenVerificationRequests: () =>
-                        context.read<DashboardCubit>().openVerificationRequests(),
+                    onOpenVerificationRequests: () => context
+                        .read<DashboardCubit>()
+                        .openVerificationRequests(),
                     onOpenCharityApprovals: () =>
                         context.read<DashboardCubit>().openCharityApprovals(),
                     onOpenAbuseReports: () =>
@@ -401,6 +403,12 @@ class _Sidebar extends StatelessWidget {
             onTap: onOpenMediaScreen,
           ),
           _MenuItem(
+            icon: Icons.flag_circle_outlined,
+            title: 'Weekly Goals',
+            active: currentView == DashboardView.weeklyGoals,
+            onTap: () => context.read<DashboardCubit>().openWeeklyGoals(),
+          ),
+          _MenuItem(
             icon: Icons.report_gmailerrorred_outlined,
             title: 'Abuse Reports',
             badge: '12',
@@ -534,6 +542,11 @@ class _SidebarCompact extends StatelessWidget {
             Icons.menu_book_outlined,
             currentView == DashboardView.media,
             onTap: onOpenMediaScreen,
+          ),
+          _CompactMenuIcon(
+            Icons.flag_circle_outlined,
+            currentView == DashboardView.weeklyGoals,
+            onTap: () => context.read<DashboardCubit>().openWeeklyGoals(),
           ),
           _CompactMenuIcon(
             Icons.report_gmailerrorred_outlined,
@@ -747,8 +760,10 @@ class _MainArea extends StatelessWidget {
     );
     final isMedia = currentView == DashboardView.media;
     final isUserManagement = currentView == DashboardView.userManagement;
-    final isVerificationRequests = currentView == DashboardView.verificationRequests;
+    final isVerificationRequests =
+        currentView == DashboardView.verificationRequests;
     final isCharityApprovals = currentView == DashboardView.charityApprovals;
+    final isWeeklyGoals = currentView == DashboardView.weeklyGoals;
     final isAbuseReports = currentView == DashboardView.abuseReports;
     final isSystemSettings = currentView == DashboardView.systemSettings;
     final isUserDetails = isUserManagement && selectedUserId != null;
@@ -771,6 +786,8 @@ class _MainArea extends StatelessWidget {
                     ? 'Search verification requests...'
                     : isCharityApprovals
                     ? 'Search requests...'
+                    : isWeeklyGoals
+                    ? 'Search weekly goals...'
                     : isAbuseReports
                     ? 'Search abuse cases...'
                     : isSystemSettings
@@ -784,6 +801,8 @@ class _MainArea extends StatelessWidget {
                     ? 'Manual Verify'
                     : isCharityApprovals
                     ? 'Export Report'
+                    : isWeeklyGoals
+                    ? 'Add Goal'
                     : isAbuseReports
                     ? 'Assign Moderator'
                     : isSystemSettings
@@ -797,18 +816,24 @@ class _MainArea extends StatelessWidget {
                     ? Icons.verified
                     : isCharityApprovals
                     ? Icons.download
+                    : isWeeklyGoals
+                    ? Icons.flag_circle
                     : isAbuseReports
                     ? Icons.gavel
                     : isSystemSettings
                     ? Icons.save
                     : Icons.add,
                 onSearchChanged: dashboardCubit.setSearchQuery,
-                onPrimaryAction: !isMedia &&
-                        !isUserManagement &&
-                        !isVerificationRequests &&
-                        !isCharityApprovals &&
-                        !isAbuseReports &&
-                        !isSystemSettings
+                onPrimaryAction: isMedia
+                    ? () => _showMediaUploadDialog(context)
+                    : isWeeklyGoals
+                    ? () => _showWeeklyGoalEditor(context)
+                    : !isUserManagement &&
+                          !isVerificationRequests &&
+                          !isCharityApprovals &&
+                          !isWeeklyGoals &&
+                          !isAbuseReports &&
+                          !isSystemSettings
                     ? dashboardCubit.createNewContent
                     : null,
               ),
@@ -816,16 +841,31 @@ class _MainArea extends StatelessWidget {
           child: LayoutBuilder(
             builder: (context, constraints) {
               final width = constraints.maxWidth;
-              final horizontalPadding = width > 2000 ? 40.0 : width > 1600 ? 32.0 : width > 1200 ? 24.0 : 18.0;
+              final horizontalPadding = width > 2000
+                  ? 40.0
+                  : width > 1600
+                  ? 32.0
+                  : width > 1200
+                  ? 24.0
+                  : 18.0;
               final verticalPadding = 18.0;
               return Padding(
-                padding: EdgeInsets.fromLTRB(horizontalPadding, verticalPadding, horizontalPadding, 16),
+                padding: EdgeInsets.fromLTRB(
+                  horizontalPadding,
+                  verticalPadding,
+                  horizontalPadding,
+                  16,
+                ),
                 child: isMedia
                     ? _MediaManagementBody(onBackToDashboard: onBackToDashboard)
                     : isVerificationRequests
-                    ? _VerificationRequestsBody(onBackToDashboard: onBackToDashboard)
+                    ? _VerificationRequestsBody(
+                        onBackToDashboard: onBackToDashboard,
+                      )
                     : isCharityApprovals
                     ? const _CharityApprovalsBody()
+                    : isWeeklyGoals
+                    ? const _WeeklyGoalsManagementBody()
                     : isAbuseReports
                     ? const _AbuseReportsBody()
                     : isSystemSettings
@@ -884,8 +924,10 @@ class _MainAreaTablet extends StatelessWidget {
     );
     final isMedia = currentView == DashboardView.media;
     final isUserManagement = currentView == DashboardView.userManagement;
-    final isVerificationRequests = currentView == DashboardView.verificationRequests;
+    final isVerificationRequests =
+        currentView == DashboardView.verificationRequests;
     final isCharityApprovals = currentView == DashboardView.charityApprovals;
+    final isWeeklyGoals = currentView == DashboardView.weeklyGoals;
     final isAbuseReports = currentView == DashboardView.abuseReports;
     final isSystemSettings = currentView == DashboardView.systemSettings;
     final isUserDetails = isUserManagement && selectedUserId != null;
@@ -910,6 +952,8 @@ class _MainAreaTablet extends StatelessWidget {
                     ? 'Search applications...'
                     : isCharityApprovals
                     ? 'Search requests...'
+                    : isWeeklyGoals
+                    ? 'Search weekly goals...'
                     : isAbuseReports
                     ? 'Search abuse cases...'
                     : isSystemSettings
@@ -923,6 +967,8 @@ class _MainAreaTablet extends StatelessWidget {
                     ? 'Verification Logs'
                     : isCharityApprovals
                     ? 'Export Report'
+                    : isWeeklyGoals
+                    ? 'Add Goal'
                     : isAbuseReports
                     ? 'Assign'
                     : isSystemSettings
@@ -936,18 +982,24 @@ class _MainAreaTablet extends StatelessWidget {
                     ? Icons.history
                     : isCharityApprovals
                     ? Icons.download
+                    : isWeeklyGoals
+                    ? Icons.flag_circle
                     : isAbuseReports
                     ? Icons.gavel
                     : isSystemSettings
                     ? Icons.save
                     : Icons.add,
                 onSearchChanged: dashboardCubit.setSearchQuery,
-                onPrimaryAction: !isMedia &&
-                        !isUserManagement &&
-                        !isVerificationRequests &&
-                        !isCharityApprovals &&
-                        !isAbuseReports &&
-                        !isSystemSettings
+                onPrimaryAction: isMedia
+                    ? () => _showMediaUploadDialog(context)
+                    : isWeeklyGoals
+                    ? () => _showWeeklyGoalEditor(context)
+                    : !isUserManagement &&
+                          !isVerificationRequests &&
+                          !isCharityApprovals &&
+                          !isWeeklyGoals &&
+                          !isAbuseReports &&
+                          !isSystemSettings
                     ? dashboardCubit.createNewContent
                     : null,
               ),
@@ -955,11 +1007,20 @@ class _MainAreaTablet extends StatelessWidget {
           child: LayoutBuilder(
             builder: (context, constraints) {
               final width = constraints.maxWidth;
-              final horizontalPadding = width > 1000 ? 20.0 : width > 800 ? 16.0 : 14.0;
+              final horizontalPadding = width > 1000
+                  ? 20.0
+                  : width > 800
+                  ? 16.0
+                  : 14.0;
               final verticalPadding = 14.0;
               return isMedia
                   ? Padding(
-                      padding: EdgeInsets.fromLTRB(horizontalPadding, verticalPadding, horizontalPadding, 14),
+                      padding: EdgeInsets.fromLTRB(
+                        horizontalPadding,
+                        verticalPadding,
+                        horizontalPadding,
+                        14,
+                      ),
                       child: _MediaManagementBody(
                         compact: true,
                         onBackToDashboard: onBackToDashboard,
@@ -967,7 +1028,12 @@ class _MainAreaTablet extends StatelessWidget {
                     )
                   : isVerificationRequests
                   ? Padding(
-                      padding: EdgeInsets.fromLTRB(horizontalPadding, verticalPadding, horizontalPadding, 14),
+                      padding: EdgeInsets.fromLTRB(
+                        horizontalPadding,
+                        verticalPadding,
+                        horizontalPadding,
+                        14,
+                      ),
                       child: _VerificationRequestsBody(
                         onBackToDashboard: onBackToDashboard,
                         compact: true,
@@ -975,21 +1041,51 @@ class _MainAreaTablet extends StatelessWidget {
                     )
                   : isCharityApprovals
                   ? Padding(
-                      padding: EdgeInsets.fromLTRB(horizontalPadding, verticalPadding, horizontalPadding, 14),
+                      padding: EdgeInsets.fromLTRB(
+                        horizontalPadding,
+                        verticalPadding,
+                        horizontalPadding,
+                        14,
+                      ),
                       child: const _CharityApprovalsBody(compact: true),
+                    )
+                  : isWeeklyGoals
+                  ? Padding(
+                      padding: EdgeInsets.fromLTRB(
+                        horizontalPadding,
+                        verticalPadding,
+                        horizontalPadding,
+                        14,
+                      ),
+                      child: const _WeeklyGoalsManagementBody(compact: true),
                     )
                   : isAbuseReports
                   ? Padding(
-                      padding: EdgeInsets.fromLTRB(horizontalPadding, verticalPadding, horizontalPadding, 14),
+                      padding: EdgeInsets.fromLTRB(
+                        horizontalPadding,
+                        verticalPadding,
+                        horizontalPadding,
+                        14,
+                      ),
                       child: const _AbuseReportsBody(compact: true),
                     )
                   : isSystemSettings
                   ? Padding(
-                      padding: EdgeInsets.fromLTRB(horizontalPadding, verticalPadding, horizontalPadding, 14),
+                      padding: EdgeInsets.fromLTRB(
+                        horizontalPadding,
+                        verticalPadding,
+                        horizontalPadding,
+                        14,
+                      ),
                       child: const _SystemSettingsBody(compact: true),
                     )
                   : SingleChildScrollView(
-                      padding: EdgeInsets.fromLTRB(horizontalPadding, verticalPadding, horizontalPadding, 14),
+                      padding: EdgeInsets.fromLTRB(
+                        horizontalPadding,
+                        verticalPadding,
+                        horizontalPadding,
+                        14,
+                      ),
                       child: isUserManagement
                           ? isUserDetails
                                 ? _UserDetailsBodyCompact(user: selectedUser)
@@ -1047,8 +1143,10 @@ class _MainAreaMobile extends StatelessWidget {
     );
     final isMedia = currentView == DashboardView.media;
     final isUserManagement = currentView == DashboardView.userManagement;
-    final isVerificationRequests = currentView == DashboardView.verificationRequests;
+    final isVerificationRequests =
+        currentView == DashboardView.verificationRequests;
     final isCharityApprovals = currentView == DashboardView.charityApprovals;
+    final isWeeklyGoals = currentView == DashboardView.weeklyGoals;
     final isAbuseReports = currentView == DashboardView.abuseReports;
     final isSystemSettings = currentView == DashboardView.systemSettings;
     final isUserDetails = isUserManagement && selectedUserId != null;
@@ -1073,6 +1171,8 @@ class _MainAreaMobile extends StatelessWidget {
                     ? 'Search apps...'
                     : isCharityApprovals
                     ? 'Search requests...'
+                    : isWeeklyGoals
+                    ? 'Search goals...'
                     : isAbuseReports
                     ? 'Search cases...'
                     : isSystemSettings
@@ -1086,6 +1186,8 @@ class _MainAreaMobile extends StatelessWidget {
                     ? 'Logs'
                     : isCharityApprovals
                     ? 'Export'
+                    : isWeeklyGoals
+                    ? 'Add Goal'
                     : isAbuseReports
                     ? 'Assign'
                     : isSystemSettings
@@ -1099,18 +1201,24 @@ class _MainAreaMobile extends StatelessWidget {
                     ? Icons.history
                     : isCharityApprovals
                     ? Icons.download
+                    : isWeeklyGoals
+                    ? Icons.flag_circle
                     : isAbuseReports
                     ? Icons.gavel
                     : isSystemSettings
                     ? Icons.save
                     : Icons.add,
                 onSearchChanged: dashboardCubit.setSearchQuery,
-                onPrimaryAction: !isMedia &&
-                        !isUserManagement &&
-                        !isVerificationRequests &&
-                        !isCharityApprovals &&
-                        !isAbuseReports &&
-                        !isSystemSettings
+                onPrimaryAction: isMedia
+                    ? () => _showMediaUploadDialog(context)
+                    : isWeeklyGoals
+                    ? () => _showWeeklyGoalEditor(context)
+                    : !isUserManagement &&
+                          !isVerificationRequests &&
+                          !isCharityApprovals &&
+                          !isWeeklyGoals &&
+                          !isAbuseReports &&
+                          !isSystemSettings
                     ? dashboardCubit.createNewContent
                     : null,
               ),
@@ -1118,11 +1226,20 @@ class _MainAreaMobile extends StatelessWidget {
           child: LayoutBuilder(
             builder: (context, constraints) {
               final width = constraints.maxWidth;
-              final horizontalPadding = width > 600 ? 16.0 : width > 400 ? 12.0 : 8.0;
+              final horizontalPadding = width > 600
+                  ? 16.0
+                  : width > 400
+                  ? 12.0
+                  : 8.0;
               final verticalPadding = 12.0;
               return isMedia
                   ? Padding(
-                      padding: EdgeInsets.fromLTRB(horizontalPadding, verticalPadding, horizontalPadding, 12),
+                      padding: EdgeInsets.fromLTRB(
+                        horizontalPadding,
+                        verticalPadding,
+                        horizontalPadding,
+                        12,
+                      ),
                       child: _MediaManagementBody(
                         compact: true,
                         onBackToDashboard: onBackToDashboard,
@@ -1130,7 +1247,12 @@ class _MainAreaMobile extends StatelessWidget {
                     )
                   : isVerificationRequests
                   ? Padding(
-                      padding: EdgeInsets.fromLTRB(horizontalPadding, verticalPadding, horizontalPadding, 12),
+                      padding: EdgeInsets.fromLTRB(
+                        horizontalPadding,
+                        verticalPadding,
+                        horizontalPadding,
+                        12,
+                      ),
                       child: _VerificationRequestsBody(
                         onBackToDashboard: onBackToDashboard,
                         compact: true,
@@ -1139,21 +1261,63 @@ class _MainAreaMobile extends StatelessWidget {
                     )
                   : isCharityApprovals
                   ? Padding(
-                      padding: EdgeInsets.fromLTRB(horizontalPadding, verticalPadding, horizontalPadding, 12),
-                      child: const _CharityApprovalsBody(compact: true, mobile: true),
+                      padding: EdgeInsets.fromLTRB(
+                        horizontalPadding,
+                        verticalPadding,
+                        horizontalPadding,
+                        12,
+                      ),
+                      child: const _CharityApprovalsBody(
+                        compact: true,
+                        mobile: true,
+                      ),
+                    )
+                  : isWeeklyGoals
+                  ? Padding(
+                      padding: EdgeInsets.fromLTRB(
+                        horizontalPadding,
+                        verticalPadding,
+                        horizontalPadding,
+                        12,
+                      ),
+                      child: const _WeeklyGoalsManagementBody(
+                        compact: true,
+                        mobile: true,
+                      ),
                     )
                   : isAbuseReports
                   ? Padding(
-                      padding: EdgeInsets.fromLTRB(horizontalPadding, verticalPadding, horizontalPadding, 12),
-                      child: const _AbuseReportsBody(compact: true, mobile: true),
+                      padding: EdgeInsets.fromLTRB(
+                        horizontalPadding,
+                        verticalPadding,
+                        horizontalPadding,
+                        12,
+                      ),
+                      child: const _AbuseReportsBody(
+                        compact: true,
+                        mobile: true,
+                      ),
                     )
                   : isSystemSettings
                   ? Padding(
-                      padding: EdgeInsets.fromLTRB(horizontalPadding, verticalPadding, horizontalPadding, 12),
-                      child: const _SystemSettingsBody(compact: true, mobile: true),
+                      padding: EdgeInsets.fromLTRB(
+                        horizontalPadding,
+                        verticalPadding,
+                        horizontalPadding,
+                        12,
+                      ),
+                      child: const _SystemSettingsBody(
+                        compact: true,
+                        mobile: true,
+                      ),
                     )
                   : SingleChildScrollView(
-                      padding: EdgeInsets.fromLTRB(horizontalPadding, verticalPadding, horizontalPadding, 12),
+                      padding: EdgeInsets.fromLTRB(
+                        horizontalPadding,
+                        verticalPadding,
+                        horizontalPadding,
+                        12,
+                      ),
                       child: isUserManagement
                           ? isUserDetails
                                 ? _UserDetailsBodyCompact(
@@ -2017,7 +2181,9 @@ class _UserInsightsRail extends StatelessWidget {
                     ),
                     padding: EdgeInsets.symmetric(vertical: mobile ? 10 : 12),
                   ),
-                  onPressed: context.read<DashboardCubit>().openVerificationRequests,
+                  onPressed: context
+                      .read<DashboardCubit>()
+                      .openVerificationRequests,
                   child: const Text('View Verification Requests'),
                 ),
               ),
@@ -3239,7 +3405,9 @@ class _RangeToggle extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final active = context.select((DashboardCubit cubit) => cubit.state.overviewRange);
+    final active = context.select(
+      (DashboardCubit cubit) => cubit.state.overviewRange,
+    );
     final cubit = context.read<DashboardCubit>();
     return Container(
       decoration: BoxDecoration(

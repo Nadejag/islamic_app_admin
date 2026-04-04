@@ -6,6 +6,7 @@ enum DashboardView {
   overview,
   userManagement,
   media,
+  weeklyGoals,
   verificationRequests,
   charityApprovals,
   abuseReports,
@@ -718,6 +719,8 @@ class DashboardCubit extends Cubit<DashboardState> {
   void backToUsers() => emit(state.copyWith(view: DashboardView.userManagement, clearSelectedUser: true, clearSelectedVerification: true, clearSelectedCharityRequest: true, hasUnsavedUserChanges: false));
 
   void openMedia() => emit(state.copyWith(view: DashboardView.media, clearSelectedUser: true, clearSelectedVerification: true, clearSelectedCharityRequest: true));
+
+  void openWeeklyGoals() => emit(state.copyWith(view: DashboardView.weeklyGoals, clearSelectedUser: true, clearSelectedVerification: true, clearSelectedCharityRequest: true));
 
   void openVerificationRequests() => emit(state.copyWith(view: DashboardView.verificationRequests, clearSelectedUser: true, clearSelectedVerification: true, clearSelectedCharityRequest: true));
 

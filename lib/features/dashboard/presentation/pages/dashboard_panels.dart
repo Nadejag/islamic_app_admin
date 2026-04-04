@@ -362,6 +362,276 @@ class _RightPanelsCompact extends StatelessWidget {
   }
 }
 
+class _WeeklyGoalsOverviewPanel extends StatelessWidget {
+  const _WeeklyGoalsOverviewPanel({this.compact = false});
+
+  final bool compact;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      padding: EdgeInsets.fromLTRB(
+        compact ? 12 : 14,
+        compact ? 12 : 14,
+        compact ? 12 : 14,
+        compact ? 12 : 14,
+      ),
+      decoration: BoxDecoration(
+        gradient: const LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [Color(0xFF12392A), Color(0xFF0E3226)],
+        ),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: AppColors.stroke),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                width: compact ? 34 : 38,
+                height: compact ? 34 : 38,
+                decoration: BoxDecoration(
+                  color: const Color(0xFF0A4B35),
+                  borderRadius: BorderRadius.circular(11),
+                ),
+                child: const Icon(
+                  Icons.flag_circle_rounded,
+                  color: AppColors.green,
+                  size: 20,
+                ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Weekly Goals',
+                      style: TextStyle(
+                        color: AppColors.white,
+                        fontSize: compact ? 16 : 18,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                    Text(
+                      'Prayer, Quran, and important habits',
+                      style: TextStyle(
+                        color: AppColors.muted,
+                        fontSize: compact ? 11 : 12,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              if (!compact)
+                OutlinedButton.icon(
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: AppColors.green,
+                    side: const BorderSide(color: AppColors.stroke),
+                  ),
+                  onPressed: () => _showWeeklyGoalEditor(context),
+                  icon: const Icon(Icons.add, size: 16),
+                  label: const Text('Add Goal'),
+                ),
+              const SizedBox(width: 8),
+              FilledButton.icon(
+                style: FilledButton.styleFrom(
+                  backgroundColor: AppColors.green,
+                  foregroundColor: const Color(0xFF032519),
+                  textStyle: TextStyle(
+                    fontSize: compact ? 12 : 13,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+                onPressed: () => _showWeeklyGoalsManager(context),
+                icon: const Icon(Icons.tune, size: 16),
+                label: const Text('Manage'),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          SizedBox(
+            height: compact ? 138 : 156,
+            child: StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
+              stream: FirebaseFirestore.instance
+                  .collection('home_weekly_goals')
+                  .orderBy('order')
+                  .snapshots(),
+              builder: (context, snapshot) {
+                if (snapshot.connectionState == ConnectionState.waiting &&
+                    !snapshot.hasData) {
+                  return const Center(child: CircularProgressIndicator());
+                }
+                if (snapshot.hasError) {
+                  return const Center(
+                    child: Text(
+                      'Could not load weekly goals.',
+                      style: TextStyle(color: Colors.redAccent),
+                    ),
+                  );
+                }
+                final docs = snapshot.data?.docs ?? const [];
+                if (docs.isEmpty) {
+                  return Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.symmetric(horizontal: 14),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF0B3023),
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: AppColors.stroke),
+                    ),
+                    child: Row(
+                      children: [
+                        const Expanded(
+                          child: Text(
+                            'No weekly goals yet. Tap Add Goal to create one.',
+                            style: TextStyle(color: AppColors.muted),
+                          ),
+                        ),
+                        OutlinedButton(
+                          onPressed: () => _showWeeklyGoalEditor(context),
+                          child: const Text('Add Goal'),
+                        ),
+                      ],
+                    ),
+                  );
+                }
+
+                return ListView.separated(
+                  scrollDirection: Axis.horizontal,
+                  itemCount: docs.length,
+                  separatorBuilder: (_, __) => const SizedBox(width: 10),
+                  itemBuilder: (context, index) =>
+                      _WeeklyGoalOverviewCard(doc: docs[index], compact: compact),
+                );
+              },
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _WeeklyGoalOverviewCard extends StatelessWidget {
+  const _WeeklyGoalOverviewCard({required this.doc, this.compact = false});
+
+  final QueryDocumentSnapshot<Map<String, dynamic>> doc;
+  final bool compact;
+
+  @override
+  Widget build(BuildContext context) {
+    final data = doc.data();
+    final rawTitle = ((data['title'] as String?) ?? '').trim();
+    final title = rawTitle.isEmpty ? doc.id : rawTitle;
+    final completed = _weeklyGoalToDouble(data['completed']);
+    final target = _weeklyGoalToDouble(data['target']);
+    final unit = ((data['unit'] as String?) ?? '').trim();
+    final color = _weeklyGoalColorFromHex((data['color'] as String?) ?? '');
+    final percent = target <= 0 ? 0.0 : (completed / target).clamp(0.0, 1.0);
+    final metric = unit.isEmpty
+        ? '${completed.toStringAsFixed(0)} / ${target.toStringAsFixed(0)}'
+        : '${completed.toStringAsFixed(0)}$unit / ${target.toStringAsFixed(0)}$unit';
+
+    return InkWell(
+      onTap: () => _showWeeklyGoalEditor(context, doc: doc),
+      borderRadius: BorderRadius.circular(12),
+      child: Container(
+        width: compact ? 180 : 206,
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [
+              Color.lerp(const Color(0xFF0A3023), color, 0.22)!,
+              const Color(0xFF0A3023),
+            ],
+          ),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: color.withValues(alpha: 0.45)),
+        ),
+        child: Row(
+          children: [
+            SizedBox(
+              width: compact ? 44 : 50,
+              height: compact ? 44 : 50,
+              child: Stack(
+                alignment: Alignment.center,
+                children: [
+                  CircularProgressIndicator(
+                    value: percent,
+                    strokeWidth: 5,
+                    backgroundColor: const Color(0xFF19483A),
+                    color: color,
+                  ),
+                  Text(
+                    '${(percent * 100).round()}%',
+                    style: TextStyle(
+                      color: AppColors.white,
+                      fontSize: compact ? 10 : 11,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Text(
+                    title,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      color: AppColors.white,
+                      fontSize: compact ? 13 : 14,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    metric,
+                    style: TextStyle(
+                      color: AppColors.muted,
+                      fontSize: compact ? 11 : 12,
+                    ),
+                  ),
+                  const SizedBox(height: 6),
+                  Container(
+                    height: 5,
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF174538),
+                      borderRadius: BorderRadius.circular(99),
+                    ),
+                    child: FractionallySizedBox(
+                      widthFactor: percent,
+                      alignment: Alignment.centerLeft,
+                      child: Container(
+                        decoration: BoxDecoration(
+                          color: color,
+                          borderRadius: BorderRadius.circular(99),
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
 class _ContentCard extends StatelessWidget {
   const _ContentCard({
     required this.icon,
@@ -431,6 +701,703 @@ class _ContentCard extends StatelessWidget {
       ),
     );
   }
+}
+
+class _WeeklyGoalsManagementBody extends StatelessWidget {
+  const _WeeklyGoalsManagementBody({this.compact = false, this.mobile = false});
+
+  final bool compact;
+  final bool mobile;
+
+  @override
+  Widget build(BuildContext context) {
+    final titleSize = mobile ? 26.0 : (compact ? 30.0 : 38.0);
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          'Weekly Goals',
+          style: TextStyle(
+            color: AppColors.white,
+            fontSize: titleSize,
+            fontWeight: FontWeight.w700,
+          ),
+        ),
+        const SizedBox(height: 6),
+        Text(
+          'Create goals like Prayer, Quran, and important weekly habits for the home screen.',
+          style: TextStyle(
+            color: AppColors.muted,
+            fontSize: mobile ? 12 : 13,
+          ),
+        ),
+        const SizedBox(height: 12),
+        Row(
+          children: [
+            FilledButton.icon(
+              style: FilledButton.styleFrom(
+                backgroundColor: AppColors.green,
+                foregroundColor: const Color(0xFF032519),
+              ),
+              onPressed: () => _showWeeklyGoalEditor(context),
+              icon: const Icon(Icons.add, size: 18),
+              label: const Text('Add Goal'),
+            ),
+            const SizedBox(width: 8),
+            OutlinedButton.icon(
+              onPressed: () => _showWeeklyGoalsManager(context),
+              icon: const Icon(Icons.tune, size: 17),
+              label: const Text('Advanced Manager'),
+            ),
+          ],
+        ),
+        const SizedBox(height: 12),
+        _WeeklyGoalsOverviewPanel(compact: compact || mobile),
+        const SizedBox(height: 12),
+        Expanded(
+          child: Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: const Color(0xFF12392A),
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: AppColors.stroke),
+            ),
+            child: StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
+              stream: FirebaseFirestore.instance
+                  .collection('home_weekly_goals')
+                  .orderBy('order')
+                  .snapshots(),
+              builder: (context, snapshot) {
+                if (snapshot.connectionState == ConnectionState.waiting &&
+                    !snapshot.hasData) {
+                  return const Center(child: CircularProgressIndicator());
+                }
+                if (snapshot.hasError) {
+                  return const Center(
+                    child: Text(
+                      'Failed to load weekly goals.',
+                      style: TextStyle(color: Colors.redAccent),
+                    ),
+                  );
+                }
+                final docs = snapshot.data?.docs ?? const [];
+                if (docs.isEmpty) {
+                  return const Center(
+                    child: Text(
+                      'No goals found. Tap Add Goal to create one.',
+                      style: TextStyle(color: AppColors.muted),
+                    ),
+                  );
+                }
+                return ListView.separated(
+                  itemCount: docs.length,
+                  separatorBuilder: (_, __) => const SizedBox(height: 10),
+                  itemBuilder: (context, index) =>
+                      _WeeklyGoalAdminTile(doc: docs[index]),
+                );
+              },
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+Future<void> _showWeeklyGoalsManager(BuildContext context) async {
+  await showModalBottomSheet<void>(
+    context: context,
+    isScrollControlled: true,
+    backgroundColor: const Color(0xFF0A2F23),
+    shape: const RoundedRectangleBorder(
+      borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+    ),
+    builder: (_) => const SafeArea(
+      child: FractionallySizedBox(
+        heightFactor: 0.92,
+        child: _WeeklyGoalsAdminSheet(),
+      ),
+    ),
+  );
+}
+
+class _WeeklyGoalsAdminSheet extends StatelessWidget {
+  const _WeeklyGoalsAdminSheet();
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Center(
+            child: Container(
+              width: 42,
+              height: 4,
+              decoration: BoxDecoration(
+                color: AppColors.strokeBright,
+                borderRadius: BorderRadius.circular(99),
+              ),
+            ),
+          ),
+          const SizedBox(height: 14),
+          Row(
+            children: [
+              const Expanded(
+                child: Text(
+                  'Weekly Goals',
+                  style: TextStyle(
+                    color: AppColors.white,
+                    fontSize: 22,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ),
+              FilledButton.icon(
+                style: FilledButton.styleFrom(
+                  backgroundColor: AppColors.green,
+                  foregroundColor: const Color(0xFF032519),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                ),
+                onPressed: () => _showWeeklyGoalEditor(context),
+                icon: const Icon(Icons.add, size: 18),
+                label: const Text('Add Goal'),
+              ),
+            ],
+          ),
+          const SizedBox(height: 6),
+          const Text(
+            'Create and update goals like Prayer, Quran, and other important weekly targets.',
+            style: TextStyle(color: AppColors.muted, fontSize: 13),
+          ),
+          const SizedBox(height: 12),
+          Expanded(
+            child: StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
+              stream: FirebaseFirestore.instance
+                  .collection('home_weekly_goals')
+                  .orderBy('order')
+                  .snapshots(),
+              builder: (context, snapshot) {
+                if (snapshot.connectionState == ConnectionState.waiting &&
+                    !snapshot.hasData) {
+                  return const Center(child: CircularProgressIndicator());
+                }
+                if (snapshot.hasError) {
+                  return Center(
+                    child: Text(
+                      'Unable to load weekly goals: ${snapshot.error}',
+                      textAlign: TextAlign.center,
+                      style: const TextStyle(color: Colors.redAccent),
+                    ),
+                  );
+                }
+                final docs = snapshot.data?.docs ?? const [];
+                if (docs.isEmpty) {
+                  return Center(
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const Text(
+                          'No weekly goals yet.',
+                          style: TextStyle(
+                            color: AppColors.white,
+                            fontSize: 16,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        const Text(
+                          'Use "Add Goal" to create the first weekly target.',
+                          style: TextStyle(color: AppColors.muted),
+                        ),
+                        const SizedBox(height: 10),
+                        OutlinedButton.icon(
+                          onPressed: () => _showWeeklyGoalEditor(context),
+                          icon: const Icon(Icons.add),
+                          label: const Text('Add First Goal'),
+                        ),
+                      ],
+                    ),
+                  );
+                }
+                return ListView.separated(
+                  itemCount: docs.length,
+                  separatorBuilder: (_, __) => const SizedBox(height: 10),
+                  itemBuilder: (context, index) {
+                    return _WeeklyGoalAdminTile(doc: docs[index]);
+                  },
+                );
+              },
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _WeeklyGoalAdminTile extends StatelessWidget {
+  const _WeeklyGoalAdminTile({required this.doc});
+
+  final QueryDocumentSnapshot<Map<String, dynamic>> doc;
+
+  @override
+  Widget build(BuildContext context) {
+    final data = doc.data();
+    final title = ((data['title'] as String?) ?? '').trim();
+    final completed = _weeklyGoalToDouble(data['completed']);
+    final target = _weeklyGoalToDouble(data['target']);
+    final unit = ((data['unit'] as String?) ?? '').trim();
+    final order = (data['order'] as num?)?.toInt() ?? 0;
+    final color = _weeklyGoalColorFromHex((data['color'] as String?) ?? '');
+    final percent = target <= 0 ? 0.0 : (completed / target).clamp(0.0, 1.0);
+    final subtitle = target <= 0
+        ? '${completed.toStringAsFixed(0)} completed'
+        : unit.isEmpty
+        ? '${completed.toStringAsFixed(0)} / ${target.toStringAsFixed(0)}'
+        : '${completed.toStringAsFixed(0)}$unit / ${target.toStringAsFixed(0)}$unit';
+
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [
+            Color.lerp(const Color(0xFF12392A), color, 0.15)!,
+            const Color(0xFF12392A),
+          ],
+        ),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: color.withValues(alpha: 0.5)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                width: 10,
+                height: 10,
+                decoration: BoxDecoration(
+                  color: color,
+                  borderRadius: BorderRadius.circular(99),
+                ),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  title.isEmpty ? doc.id : title,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    color: AppColors.white,
+                    fontSize: 16,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF0E3529),
+                  borderRadius: BorderRadius.circular(99),
+                  border: Border.all(color: AppColors.stroke),
+                ),
+                child: Text(
+                  'Order $order',
+                  style: const TextStyle(
+                    color: AppColors.muted,
+                    fontSize: 11,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Text(
+            subtitle,
+            style: const TextStyle(color: AppColors.muted, fontSize: 12),
+          ),
+          const SizedBox(height: 8),
+          LinearProgressIndicator(
+            value: percent,
+            minHeight: 7,
+            color: color,
+            backgroundColor: const Color(0xFF0A2F23),
+          ),
+          const SizedBox(height: 10),
+          Row(
+            children: [
+              OutlinedButton.icon(
+                onPressed: () => _showWeeklyGoalEditor(context, doc: doc),
+                icon: const Icon(Icons.edit, size: 16),
+                label: const Text('Edit'),
+              ),
+              const SizedBox(width: 8),
+              OutlinedButton.icon(
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: const Color(0xFFFF9090),
+                  side: const BorderSide(color: Color(0xFF6A2E2E)),
+                ),
+                onPressed: () => _deleteWeeklyGoal(context, doc),
+                icon: const Icon(Icons.delete_outline, size: 16),
+                label: const Text('Delete'),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+const List<String> _weeklyGoalPresetHex = [
+  '#1FF08D',
+  '#59C4FF',
+  '#F7C948',
+  '#FF8A65',
+  '#C792EA',
+  '#FF6B8A',
+  '#00D2B8',
+  '#90CAF9',
+];
+
+Future<void> _showWeeklyGoalEditor(
+  BuildContext context, {
+  QueryDocumentSnapshot<Map<String, dynamic>>? doc,
+}) async {
+  final existing = doc?.data() ?? const <String, dynamic>{};
+  final titleCtl = TextEditingController(
+    text: ((existing['title'] as String?) ?? '').trim(),
+  );
+  final targetCtl = TextEditingController(
+    text: _weeklyGoalToDouble(existing['target']).toStringAsFixed(0),
+  );
+  final completedCtl = TextEditingController(
+    text: _weeklyGoalToDouble(existing['completed']).toStringAsFixed(0),
+  );
+  final unitCtl = TextEditingController(
+    text: ((existing['unit'] as String?) ?? '').trim(),
+  );
+  final orderCtl = TextEditingController(
+    text: ((existing['order'] as num?)?.toInt() ?? 0).toString(),
+  );
+  final colorCtl = TextEditingController(
+    text: ((existing['color'] as String?) ?? '').trim(),
+  );
+  var selectedColorHex = _normalizeWeeklyGoalColorHex(colorCtl.text);
+  if (selectedColorHex.isEmpty) {
+    selectedColorHex = _weeklyGoalPresetHex.first;
+  }
+  colorCtl.text = selectedColorHex;
+
+  final confirmed =
+      await showDialog<bool>(
+        context: context,
+        builder: (dialogContext) => StatefulBuilder(
+          builder: (context, setState) {
+            final preview = _weeklyGoalColorFromHex(selectedColorHex);
+            return AlertDialog(
+              backgroundColor: const Color(0xFF103628),
+              title: Text(
+                doc == null ? 'Add Weekly Goal' : 'Edit Weekly Goal',
+                style: const TextStyle(color: AppColors.white),
+              ),
+              content: SizedBox(
+                width: 430,
+                child: SingleChildScrollView(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      TextField(
+                        controller: titleCtl,
+                        style: const TextStyle(color: AppColors.white),
+                        decoration: const InputDecoration(
+                          labelText: 'Title',
+                          hintText: 'Prayer, Quran, Charity...',
+                        ),
+                      ),
+                      const SizedBox(height: 10),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: TextField(
+                              controller: targetCtl,
+                              keyboardType: TextInputType.number,
+                              style: const TextStyle(color: AppColors.white),
+                              decoration: const InputDecoration(
+                                labelText: 'Target',
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 10),
+                          Expanded(
+                            child: TextField(
+                              controller: completedCtl,
+                              keyboardType: TextInputType.number,
+                              style: const TextStyle(color: AppColors.white),
+                              decoration: const InputDecoration(
+                                labelText: 'Completed',
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 10),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: TextField(
+                              controller: unitCtl,
+                              style: const TextStyle(color: AppColors.white),
+                              decoration: const InputDecoration(
+                                labelText: 'Unit (optional)',
+                                hintText: 'times, pages',
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 10),
+                          Expanded(
+                            child: TextField(
+                              controller: orderCtl,
+                              keyboardType: TextInputType.number,
+                              style: const TextStyle(color: AppColors.white),
+                              decoration: const InputDecoration(
+                                labelText: 'Order',
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 12),
+                      const Text(
+                        'Goal Color',
+                        style: TextStyle(
+                          color: AppColors.white,
+                          fontSize: 13,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      Wrap(
+                        spacing: 8,
+                        runSpacing: 8,
+                        children: _weeklyGoalPresetHex.map((hex) {
+                          final swatch = _weeklyGoalColorFromHex(hex);
+                          final active = selectedColorHex == hex;
+                          return InkWell(
+                            onTap: () {
+                              setState(() => selectedColorHex = hex);
+                              colorCtl.text = hex;
+                            },
+                            borderRadius: BorderRadius.circular(99),
+                            child: Container(
+                              width: 28,
+                              height: 28,
+                              decoration: BoxDecoration(
+                                color: swatch,
+                                borderRadius: BorderRadius.circular(99),
+                                border: Border.all(
+                                  color: active
+                                      ? AppColors.white
+                                      : Colors.white.withValues(alpha: 0.35),
+                                  width: active ? 2 : 1,
+                                ),
+                              ),
+                              child: active
+                                  ? const Icon(
+                                      Icons.check,
+                                      size: 15,
+                                      color: Color(0xFF032519),
+                                    )
+                                  : null,
+                            ),
+                          );
+                        }).toList(),
+                      ),
+                      const SizedBox(height: 10),
+                      Row(
+                        children: [
+                          Container(
+                            width: 16,
+                            height: 16,
+                            decoration: BoxDecoration(
+                              color: preview,
+                              borderRadius: BorderRadius.circular(99),
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: TextField(
+                              controller: colorCtl,
+                              style: const TextStyle(color: AppColors.white),
+                              decoration: const InputDecoration(
+                                labelText: 'Custom Color Hex',
+                                hintText: '#1FF08D',
+                              ),
+                              onChanged: (value) {
+                                final normalized =
+                                    _normalizeWeeklyGoalColorHex(value);
+                                if (normalized.isNotEmpty) {
+                                  setState(() => selectedColorHex = normalized);
+                                }
+                              },
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(dialogContext, false),
+                  child: const Text('Cancel'),
+                ),
+                FilledButton(
+                  onPressed: () => Navigator.pop(dialogContext, true),
+                  child: const Text('Save'),
+                ),
+              ],
+            );
+          },
+        ),
+      ) ??
+      false;
+
+  if (!confirmed) return;
+
+  final title = titleCtl.text.trim();
+  if (title.isEmpty) {
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(const SnackBar(content: Text('Title is required.')));
+    return;
+  }
+
+  final target = _weeklyGoalParseDouble(targetCtl.text.trim());
+  final completed = _weeklyGoalParseDouble(completedCtl.text.trim());
+  final order = int.tryParse(orderCtl.text.trim()) ?? 0;
+  final payload = <String, dynamic>{
+    'title': title,
+    'target': target < 0 ? 0.0 : target,
+    'completed': completed < 0 ? 0.0 : completed,
+    'unit': unitCtl.text.trim(),
+    'order': order,
+    'color': _normalizeWeeklyGoalColorHex(colorCtl.text.trim()),
+    'updatedAt': FieldValue.serverTimestamp(),
+  };
+
+  try {
+    final goals = FirebaseFirestore.instance.collection('home_weekly_goals');
+    if (doc == null) {
+      payload['createdAt'] = FieldValue.serverTimestamp();
+      await goals.add(payload);
+    } else {
+      await goals.doc(doc.id).set(payload, SetOptions(merge: true));
+    }
+    if (!context.mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          doc == null ? 'Weekly goal created.' : 'Weekly goal updated.',
+        ),
+      ),
+    );
+  } catch (e) {
+    if (!context.mounted) return;
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text('Could not save goal: $e')));
+  }
+}
+
+Future<void> _deleteWeeklyGoal(
+  BuildContext context,
+  QueryDocumentSnapshot<Map<String, dynamic>> doc,
+) async {
+  final data = doc.data();
+  final title = ((data['title'] as String?) ?? '').trim();
+  final confirmed =
+      await showDialog<bool>(
+        context: context,
+        builder: (dialogContext) => AlertDialog(
+          backgroundColor: const Color(0xFF103628),
+          title: const Text(
+            'Delete Weekly Goal?',
+            style: TextStyle(color: AppColors.white),
+          ),
+          content: Text(
+            'This will remove "${title.isEmpty ? doc.id : title}" from home weekly goals.',
+            style: const TextStyle(color: AppColors.muted),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(dialogContext, false),
+              child: const Text('Cancel'),
+            ),
+            FilledButton(
+              style: FilledButton.styleFrom(
+                backgroundColor: const Color(0xFF8A2D2D),
+                foregroundColor: Colors.white,
+              ),
+              onPressed: () => Navigator.pop(dialogContext, true),
+              child: const Text('Delete'),
+            ),
+          ],
+        ),
+      ) ??
+      false;
+
+  if (!confirmed) return;
+  try {
+    await FirebaseFirestore.instance
+        .collection('home_weekly_goals')
+        .doc(doc.id)
+        .delete();
+    if (!context.mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Weekly goal deleted.')),
+    );
+  } catch (e) {
+    if (!context.mounted) return;
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text('Could not delete goal: $e')));
+  }
+}
+
+double _weeklyGoalParseDouble(String value) => double.tryParse(value) ?? 0.0;
+
+double _weeklyGoalToDouble(Object? value) =>
+    (value as num?)?.toDouble() ?? 0.0;
+
+String _normalizeWeeklyGoalColorHex(String raw) {
+  final cleaned = raw.trim().replaceAll('#', '');
+  if (cleaned.length == 6 && int.tryParse(cleaned, radix: 16) != null) {
+    return '#${cleaned.toUpperCase()}';
+  }
+  if (cleaned.length == 8 && int.tryParse(cleaned, radix: 16) != null) {
+    return '#${cleaned.substring(2).toUpperCase()}';
+  }
+  return '';
+}
+
+Color _weeklyGoalColorFromHex(String raw) {
+  final cleaned = _normalizeWeeklyGoalColorHex(raw).replaceAll('#', '');
+  if (cleaned.length == 6) {
+    final parsed = int.tryParse('FF$cleaned', radix: 16);
+    if (parsed != null) return Color(parsed);
+  }
+  return AppColors.green;
 }
 
 class _CharityApprovalsBody extends StatelessWidget {

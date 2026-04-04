@@ -313,6 +313,12 @@ class DashboardPage extends StatelessWidget {
                     icon: Icons.menu_book_outlined,
                     route: AppRoutes.cms,
                   ),
+                  _QuickActionTile(
+                    title: 'Home Screen Control',
+                    subtitle: 'Manage prayer times, ayah & goals',
+                    icon: Icons.home_outlined,
+                    route: AppRoutes.homeControl,
+                  ),
                 ],
               ),
             ),

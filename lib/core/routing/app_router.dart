@@ -13,6 +13,7 @@ import '../../features/scholars/presentation/scholars_page.dart';
 import '../../features/settings/presentation/settings_page.dart';
 import '../../features/teaching/presentation/teaching_page.dart';
 import '../../features/users/presentation/users_page.dart';
+import '../../admin_home_control.dart';
 import '../providers/providers.dart';
 import 'app_routes.dart';
 
@@ -82,6 +83,10 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: AppRoutes.settings,
         builder: (_, __) => const SettingsPage(),
+      ),
+      GoRoute(
+        path: AppRoutes.homeControl,
+        builder: (_, __) => const AdminHomeControlScreen(),
       ),
     ],
   );

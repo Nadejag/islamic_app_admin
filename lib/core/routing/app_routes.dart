@@ -12,4 +12,5 @@ class AppRoutes {
   static const reports = '/reports';
   static const logs = '/system-logs';
   static const settings = '/settings';
+  static const homeControl = '/home-control';
 }

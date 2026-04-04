@@ -62,6 +62,20 @@ service cloud.firestore {
       allow update, delete: if false;
     }
 
+    match /home_content/{id} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    match /home_weekly_goals/{id} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    match /content_registry/{id} {
+      allow read, write: if isAdmin();
+    }
+
     match /settings/{id} {
       allow read: if true;
       allow write: if isAdmin();
